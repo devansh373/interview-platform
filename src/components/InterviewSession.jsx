@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useTextToSpeech } from "../hooks/useTextToSpeech";
 import { useVideoRecorder } from "../hooks/useVideoRecorder";
 import { useSegmentRecorder } from "../hooks/useSegmentRecorder";
+import { useTranscription } from "../hooks/useTranscription";
 import "../index.css";
 
 const Step = {
@@ -16,8 +17,9 @@ const InterviewSession = ({ questions }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isAnswering, setIsAnswering] = useState(false);
   const videoRef = useRef(null);
+  const questionAudioSavedRef = useRef(new Set()); // Track which questions have audio saved
 
-  const { speak, cancel, audioStream } = useTextToSpeech();
+  const { speak, cancel, audioStream, lastBlob } = useTextToSpeech();
 
   const {
     stream,
@@ -28,14 +30,11 @@ const InterviewSession = ({ questions }) => {
     error: videoError,
   } = useVideoRecorder();
 
-  const {
-    segments,
-    startSegment,
-    stopSegment,
-    addSegment,
-    downloadSegments,
-    
-  } = useSegmentRecorder();
+  const { startSegment, stopSegment, addSegment, getSegments } =
+    useSegmentRecorder();
+
+  const { transcribeAudio, transcriptions, isTranscribing } =
+    useTranscription();
 
   // Handle stream mounting
   useEffect(() => {
@@ -51,8 +50,9 @@ const InterviewSession = ({ questions }) => {
       setIsSpeaking(false);
 
       // Save the question audio blob
-      if (audioBlob) {
+      if (audioBlob && !questionAudioSavedRef.current.has(index)) {
         addSegment("question", index, audioBlob);
+        questionAudioSavedRef.current.add(index);
       }
 
       // Start recording answer audio (candidate's response)
@@ -91,10 +91,17 @@ const InterviewSession = ({ questions }) => {
     }
   }, [isRecording, currentStep]); // removing qIndex dep to avoid re-triggering, handled by condition
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    // Save the current question audio blob if it hasn't been saved yet
+    // (happens when user skips before question finishes playing)
+    if (isSpeaking && lastBlob && !questionAudioSavedRef.current.has(qIndex)) {
+      addSegment("question", qIndex, lastBlob);
+      questionAudioSavedRef.current.add(qIndex);
+    }
+
     cancel(); // Stop current speech
 
-    // Stop recording the current answer
+    // Stop recording the current answer (don't transcribe yet)
     if (isAnswering) {
       stopSegment();
       setIsAnswering(false);
@@ -109,16 +116,48 @@ const InterviewSession = ({ questions }) => {
     }
   };
 
-  const finishInterview = () => {
+  const finishInterview = async () => {
+    // Save the last question audio blob if it hasn't been saved yet
+    if (isSpeaking && lastBlob && !questionAudioSavedRef.current.has(qIndex)) {
+      addSegment("question", qIndex, lastBlob);
+      questionAudioSavedRef.current.add(qIndex);
+    }
+
     cancel();
 
-    // Stop any ongoing answer recording
+    // Stop the last answer recording
     if (isAnswering) {
       stopSegment();
       setIsAnswering(false);
     }
 
     stopRecording();
+
+    // Wait a moment for the last segment to be saved
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Get all segments synchronously
+    const allSegments = getSegments();
+    const answerSegments = allSegments.filter((s) => s.type === "answer");
+
+    console.log(
+      `🎤 Starting transcription of ${answerSegments.length} answers...`,
+    );
+
+    // Transcribe all answer segments
+    for (let i = 0; i < answerSegments.length; i++) {
+      const segment = answerSegments[i];
+      if (segment.blob) {
+        console.log(`Transcribing answer ${i + 1}/${answerSegments.length}...`);
+        await transcribeAudio(
+          segment.blob,
+          segment.index,
+          questions[segment.index].text,
+        );
+      }
+    }
+
+    console.log("✅ All answers transcribed!");
     setStep(Step.COMPLETED);
   };
 
@@ -135,29 +174,144 @@ const InterviewSession = ({ questions }) => {
     window.URL.revokeObjectURL(url);
   };
 
-  const downloadAll = () => {
-    // Download full video
-    downloadVideo();
+  const downloadResults = () => {
+    // Build interview results object
+    const interviewResults = {
+      interviewDate: new Date().toISOString(),
+      questionsAndAnswers: transcriptions.map((t) => ({
+        question: t.question,
+        answer: t.answer,
+      })),
+      totalQuestions: questions.length,
+      completedQuestions: transcriptions.length,
+    };
 
-    // Download all question and answer segments
-    downloadSegments();
+    // Download as JSON
+    const blob = new Blob([JSON.stringify(interviewResults, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    document.body.appendChild(a);
+    a.style = "display: none";
+    a.href = url;
+    a.download = `interview-results-${Date.now()}.json`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   if (currentStep === Step.COMPLETED) {
+    // Show loading screen while transcribing
+    if (isTranscribing) {
+      return (
+        <div
+          className="glass-panel"
+          style={{
+            textAlign: "center",
+            maxWidth: "600px",
+            margin: "0 auto",
+            padding: "3rem 2rem",
+          }}
+        >
+          <div style={{ marginBottom: "2rem" }}>
+            <div
+              className="spinner"
+              style={{
+                border: "4px solid rgba(99, 102, 241, 0.2)",
+                borderTop: "4px solid #818cf8",
+                borderRadius: "50%",
+                width: "60px",
+                height: "60px",
+                animation: "spin 1s linear infinite",
+                margin: "0 auto",
+              }}
+            ></div>
+          </div>
+          <h2
+            style={{
+              fontSize: "1.8rem",
+              marginBottom: "1rem",
+              color: "#e4e4e7",
+            }}
+          >
+            Getting Your Results Ready<span className="loading-dots">...</span>
+          </h2>
+          <p style={{ color: "#a5b4fc", fontSize: "1rem", lineHeight: "1.6" }}>
+            We're processing your interview responses.
+            <br />
+            This will just take a moment.
+          </p>
+          <style>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+            @keyframes loadingDots {
+              0%, 20% { content: '.'; }
+              40% { content: '..'; }
+              60%, 100% { content: '...'; }
+            }
+            .loading-dots {
+              animation: loadingDots 1.5s infinite;
+            }
+          `}</style>
+        </div>
+      );
+    }
+
     return (
       <div
         className="glass-panel"
-        style={{ textAlign: "center", maxWidth: "600px", margin: "0 auto" }}
+        style={{ textAlign: "center", maxWidth: "700px", margin: "0 auto" }}
       >
         <h2>Interview Completed!</h2>
-        <p>Your full session has been recorded.</p>
+        <p>Your interview has been transcribed.</p>
         <p
           style={{ color: "#a5b4fc", fontSize: "0.9rem", marginTop: "0.5rem" }}
         >
-          {segments.length} audio segments recorded (
-          {segments.filter((s) => s.type === "question").length} questions,{" "}
-          {segments.filter((s) => s.type === "answer").length} answers)
+          {transcriptions.length} of {questions.length} questions answered
         </p>
+
+        {/* Show transcriptions */}
+        {transcriptions.length > 0 && (
+          <div
+            style={{
+              marginTop: "2rem",
+              textAlign: "left",
+              maxHeight: "300px",
+              overflowY: "auto",
+            }}
+          >
+            <h3 style={{ fontSize: "1.1rem", marginBottom: "1rem" }}>
+              Interview Transcript:
+            </h3>
+            {transcriptions.map((t, idx) => (
+              <div
+                key={idx}
+                style={{
+                  marginBottom: "1.5rem",
+                  padding: "1rem",
+                  background: "rgba(255,255,255,0.05)",
+                  borderRadius: "8px",
+                }}
+              >
+                <p
+                  style={{
+                    color: "#a5b4fc",
+                    fontWeight: "600",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  Q{idx + 1}: {t.question}
+                </p>
+                <p style={{ color: "#e4e4e7", fontSize: "0.95rem" }}>
+                  A: {t.answer || "[No answer recorded]"}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div
           style={{
             display: "flex",
@@ -168,11 +322,11 @@ const InterviewSession = ({ questions }) => {
           }}
         >
           <button
-            onClick={downloadAll}
+            onClick={downloadResults}
             className="primary-btn"
             style={{ marginTop: 0 }}
           >
-            Download All Files
+            Download Interview Results (JSON)
           </button>
           <button
             onClick={downloadVideo}
@@ -185,20 +339,7 @@ const InterviewSession = ({ questions }) => {
               borderRadius: "12px",
             }}
           >
-            Video Only
-          </button>
-          <button
-            onClick={downloadSegments}
-            style={{
-              padding: "1rem",
-              background: "transparent",
-              border: "1px solid #3f3f46",
-              cursor: "pointer",
-              color: "white",
-              borderRadius: "12px",
-            }}
-          >
-            Segments Only
+            Download Video
           </button>
           <button
             onClick={() => window.location.reload()}
@@ -211,7 +352,7 @@ const InterviewSession = ({ questions }) => {
               borderRadius: "12px",
             }}
           >
-            New Session
+            New Interview
           </button>
         </div>
       </div>
@@ -316,17 +457,19 @@ const InterviewSession = ({ questions }) => {
           <button
             onClick={handleNext}
             className="primary-btn"
-            disabled={isSpeaking}
+            disabled={isSpeaking || isTranscribing}
             style={{
               width: "100%",
               marginTop: 0,
-              opacity: isSpeaking ? 0.5 : 1,
-              cursor: isSpeaking ? "not-allowed" : "pointer",
+              opacity: isSpeaking || isTranscribing ? 0.5 : 1,
+              cursor: isSpeaking || isTranscribing ? "not-allowed" : "pointer",
             }}
           >
-            {qIndex < questions.length - 1
-              ? "Next Question →"
-              : "Finish Interview"}
+            {isTranscribing
+              ? "Transcribing answer..."
+              : qIndex < questions.length - 1
+                ? "Next Question →"
+                : "Finish Interview"}
           </button>
         </div>
       </div>

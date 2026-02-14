@@ -6,6 +6,7 @@ import { useState, useCallback, useRef } from "react";
  */
 export function useSegmentRecorder() {
   const [segments, setSegments] = useState([]);
+  const segmentsRef = useRef([]);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const currentSegmentRef = useRef(null);
@@ -52,6 +53,7 @@ export function useSegmentRecorder() {
           timestamp: new Date().toISOString(),
         };
 
+        segmentsRef.current = [...segmentsRef.current, segment];
         setSegments((prev) => [...prev, segment]);
         chunksRef.current = [];
       };
@@ -107,13 +109,22 @@ export function useSegmentRecorder() {
       blob,
       timestamp: new Date().toISOString(),
     };
+    segmentsRef.current = [...segmentsRef.current, segment];
     setSegments((prev) => [...prev, segment]);
+  }, []);
+
+  /**
+   * Get current segments synchronously
+   */
+  const getSegments = useCallback(() => {
+    return segmentsRef.current;
   }, []);
 
   /**
    * Clear all segments
    */
   const clearSegments = useCallback(() => {
+    segmentsRef.current = [];
     setSegments([]);
   }, []);
 
@@ -122,6 +133,7 @@ export function useSegmentRecorder() {
     startSegment,
     stopSegment,
     addSegment,
+    getSegments,
     downloadSegments,
     clearSegments,
   };

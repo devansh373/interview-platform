@@ -1,16 +1,19 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import "./index.css";
 import "./App.css";
 import InterviewSession from "./components/InterviewSession";
-import { questions } from "./data/questions";
+import { getRandomQuestions } from "./data/questions";
 
 function App() {
   const [activeFeature, setActiveFeature] = useState(0);
   const [started, setStarted] = useState(false);
 
+  // Generate 7 random questions when the interview starts
+  const randomQuestions = useMemo(() => getRandomQuestions(), []);
+
   // If interview started, show the session
   if (started) {
-    return <InterviewSession questions={questions} />;
+    return <InterviewSession questions={randomQuestions} />;
   }
 
   const features = [
