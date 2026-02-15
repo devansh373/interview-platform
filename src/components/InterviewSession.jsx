@@ -428,8 +428,78 @@ const InterviewSession = ({ questions }) => {
         gap: "2rem",
         height: "80vh",
         padding: "1rem",
+        position: "relative",
       }}
     >
+      {/* Full-screen loading overlay during transcription */}
+      {isTranscribing && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(9, 9, 11, 0.98)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            borderRadius: "16px",
+          }}
+        >
+          <div
+            style={{ textAlign: "center", maxWidth: "400px", width: "100%" }}
+          >
+            <p
+              style={{
+                color: "#e4e4e7",
+                fontSize: "1.3rem",
+                marginBottom: "2rem",
+                fontWeight: "500",
+              }}
+            >
+              Analyzing...
+            </p>
+            {/* Loading bar */}
+            <div
+              style={{
+                width: "100%",
+                height: "8px",
+                background: "rgba(99, 102, 241, 0.2)",
+                borderRadius: "4px",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  height: "100%",
+                  background: "linear-gradient(90deg, #818cf8, #6366f1)",
+                  borderRadius: "4px",
+                  animation: "loadingBar 1.5s ease-in-out infinite",
+                }}
+              ></div>
+            </div>
+          </div>
+          <style>{`
+            @keyframes loadingBar {
+              0% {
+                width: 0%;
+                margin-left: 0%;
+              }
+              50% {
+                width: 70%;
+                margin-left: 15%;
+              }
+              100% {
+                width: 0%;
+                margin-left: 100%;
+              }
+            }
+          `}</style>
+        </div>
+      )}
+
       {/* Left: Question Area */}
       <div
         className="question-area glass-panel"
@@ -473,11 +543,9 @@ const InterviewSession = ({ questions }) => {
               cursor: isSpeaking || isTranscribing ? "not-allowed" : "pointer",
             }}
           >
-            {isTranscribing
-              ? "Transcribing answer..."
-              : qIndex < questions.length - 1
-                ? "Next Question →"
-                : "Finish Interview"}
+            {qIndex < questions.length - 1
+              ? "Next Question →"
+              : "Finish Interview"}
           </button>
         </div>
       </div>

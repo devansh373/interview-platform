@@ -13,7 +13,7 @@ export function useAudioPlayer(src, onEnded) {
       setIsPlaying(false);
       if (onEnded) onEnded();
     };
-    audioRef.current.onerror = (e) => {
+    audioRef.current.onerror = () => {
       setError("Audio file not found or unplayable.");
       setIsPlaying(false);
       // For demo purposes, we can simulate end after a timeout if file is missing
