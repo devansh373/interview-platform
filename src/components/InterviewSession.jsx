@@ -177,15 +177,15 @@ const InterviewSession = ({ questions }) => {
     document.body.appendChild(a);
     a.style = "display: none";
     a.href = url;
-    a.download = "full-interview.webm";
+    a.download = "assessment-session.webm";
     a.click();
     window.URL.revokeObjectURL(url);
   };
 
   const downloadResults = () => {
-    // Build interview results object
-    const interviewResults = {
-      interviewDate: new Date().toISOString(),
+    // Build assessment results object
+    const assessmentResults = {
+      assessmentDate: new Date().toISOString(),
       questionsAndAnswers: transcriptions.map((t) => ({
         question: t.question,
         answer: t.answer,
@@ -195,7 +195,7 @@ const InterviewSession = ({ questions }) => {
     };
 
     // Download as JSON
-    const blob = new Blob([JSON.stringify(interviewResults, null, 2)], {
+    const blob = new Blob([JSON.stringify(assessmentResults, null, 2)], {
       type: "application/json",
     });
     const url = URL.createObjectURL(blob);
@@ -203,7 +203,7 @@ const InterviewSession = ({ questions }) => {
     document.body.appendChild(a);
     a.style = "display: none";
     a.href = url;
-    a.download = `interview-results-${Date.now()}.json`;
+    a.download = `assessment-results-${Date.now()}.json`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -245,7 +245,7 @@ const InterviewSession = ({ questions }) => {
             Getting Your Results Ready<span className="loading-dots">...</span>
           </h2>
           <p style={{ color: "#a5b4fc", fontSize: "1rem", lineHeight: "1.6" }}>
-            We're processing your interview responses.
+            We're processing your assessment responses.
             <br />
             This will just take a moment.
           </p>
@@ -272,8 +272,8 @@ const InterviewSession = ({ questions }) => {
         className="glass-panel"
         style={{ textAlign: "center", maxWidth: "700px", margin: "0 auto" }}
       >
-        <h2>Interview Completed!</h2>
-        <p>Your interview has been transcribed.</p>
+        <h2>Assessment Completed!</h2>
+        <p>Your responses have been recorded and transcribed.</p>
         <p
           style={{ color: "#a5b4fc", fontSize: "0.9rem", marginTop: "0.5rem" }}
         >
@@ -291,7 +291,7 @@ const InterviewSession = ({ questions }) => {
             }}
           >
             <h3 style={{ fontSize: "1.1rem", marginBottom: "1rem" }}>
-              Interview Transcript:
+              Assessment Transcript:
             </h3>
             {transcriptions.map((t, idx) => (
               <div
@@ -334,7 +334,7 @@ const InterviewSession = ({ questions }) => {
             className="primary-btn"
             style={{ marginTop: 0 }}
           >
-            Download Interview Results (JSON)
+            Download Assessment Results (JSON)
           </button>
           <button
             onClick={downloadVideo}
@@ -347,7 +347,7 @@ const InterviewSession = ({ questions }) => {
               borderRadius: "12px",
             }}
           >
-            Download Video
+            Download Session Recording
           </button>
           <button
             onClick={() => window.location.reload()}
@@ -360,7 +360,7 @@ const InterviewSession = ({ questions }) => {
               borderRadius: "12px",
             }}
           >
-            New Interview
+            New Assessment
           </button>
         </div>
       </div>
@@ -371,10 +371,10 @@ const InterviewSession = ({ questions }) => {
     return (
       <div
         className="glass-panel"
-        style={{ maxWidth: "600px", margin: "0 auto" }}
+        style={{ maxWidth: "600px", margin: " auto" }}
       >
-        <h2>Start Interview Recording</h2>
-        <p>We will record your video and audio for the entire session.</p>
+        <h2 style={{ margin: "auto" }}> Mental Health Assessment</h2>
+        <p>We will record your video and audio for clinical evaluation.</p>
 
         <div
           style={{
@@ -399,11 +399,10 @@ const InterviewSession = ({ questions }) => {
               Please <strong>Allow</strong> access to your camera and
               microphone.
             </li>
+            <li>Once started, listen to each question and respond honestly.</li>
             <li>
-              Once started, listen to the question and provide your answer.
-            </li>
-            <li>
-              Ensure you are in a quiet environment and your face is visible.
+              Ensure you are in a quiet, private environment where you feel
+              comfortable.
             </li>
           </ul>
         </div>
@@ -411,7 +410,7 @@ const InterviewSession = ({ questions }) => {
         {videoError && <p style={{ color: "#ef4444" }}>{videoError}</p>}
 
         <button className="primary-btn" onClick={handleStart}>
-          Start & Record
+          Begin Assessment
         </button>
       </div>
     );
@@ -440,12 +439,16 @@ const InterviewSession = ({ questions }) => {
             left: 0,
             right: 0,
             bottom: 0,
-            background: "rgba(9, 9, 11, 0.98)",
+            background: "rgba(9, 9, 11, 0.3)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             zIndex: 1000,
             borderRadius: "16px",
+            width: "100vw",
+            height: "100vh",
           }}
         >
           <div
@@ -545,7 +548,7 @@ const InterviewSession = ({ questions }) => {
           >
             {qIndex < questions.length - 1
               ? "Next Question →"
-              : "Finish Interview"}
+              : "Complete Assessment"}
           </button>
         </div>
       </div>

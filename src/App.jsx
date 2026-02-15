@@ -8,10 +8,10 @@ function App() {
   const [activeFeature, setActiveFeature] = useState(0);
   const [started, setStarted] = useState(false);
 
-  // Generate 7 random questions when the interview starts
+  // Generate 7 random questions when the assessment starts
   const randomQuestions = useMemo(() => getRandomQuestions(), []);
 
-  // If interview started, show the session
+  // If assessment started, show the session
   if (started) {
     return <InterviewSession questions={randomQuestions} />;
   }
@@ -19,34 +19,35 @@ function App() {
   const features = [
     {
       title: "Audio Guided",
-      description:
-        "Questions are read aloud to simulate a real interviewer presence.",
+      description: "Questions are read aloud in a calm, supportive manner.",
       icon: "🎧",
     },
     {
       title: "Video Recording",
-      description: "Capture your responses with high-quality video and audio.",
+      description: "Securely capture your responses for clinical analysis.",
       icon: "📹",
     },
     {
-      title: "Instant Feedback",
-      description: "Review your answers and submit smoothly to the cloud.",
-      icon: "🚀",
+      title: "Comprehensive Analysis",
+      description:
+        "Receive detailed insights on anxiety, depression, and stress levels.",
+      icon: "📊",
     },
   ];
 
   return (
     <>
       <div className="animate-fade-in" style={{ paddingTop: "2rem" }}>
-        <span className="badge">New Interview Platform</span>
+        {/* <span className="badge">Mental Health Assessment</span> */}
         <h1>
-          Ready to <span style={{ color: "#818cf8" }}>Showcase</span>
+          Your <span style={{ color: "#818cf8" }}>Mental Wellness</span>
           <br />
-          Your Skills?
+          Matters
         </h1>
         <p>
-          A seamless, automated interview experience designed to let your talent
-          shine. Answer pre-recorded questions at your own pace.
+          A confidential, guided assessment to evaluate anxiety, depression, and
+          stress levels. Answer questions at your own pace in a safe, supportive
+          environment.
         </p>
         <div
           style={{
@@ -56,7 +57,7 @@ function App() {
             marginTop: "2rem",
           }}
         >
-          <button onClick={() => setStarted(true)}>Start Mock Interview</button>
+          <button onClick={() => setStarted(true)}>Begin Assessment</button>
           <button
             style={{ background: "transparent", border: "1px solid #3f3f46" }}
           >
