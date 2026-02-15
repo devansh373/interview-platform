@@ -8,6 +8,7 @@ export function useVideoRecorder() {
   const mediaRecorderRef = useRef(null);
   const combinedStreamRef = useRef(null);
   const audioContextRef = useRef(null);
+  const audioDestinationRef = useRef(null); // Store destination for dynamic TTS reconnection
 
   const stopRecording = useCallback(() => {
     if (
@@ -53,6 +54,7 @@ export function useVideoRecorder() {
         audioContextRef.current = audioCtx;
 
         const destination = audioCtx.createMediaStreamDestination();
+        audioDestinationRef.current = destination; // Store for dynamic reconnection
 
         // Add Mic to Mix
         if (userStream.getAudioTracks().length > 0) {
@@ -153,9 +155,58 @@ export function useVideoRecorder() {
     [stopRecording],
   );
 
+  // Method to reconnect a new TTS audio stream dynamically
+  const reconnectTTSAudio = useCallback((newAudioStream) => {
+    if (!audioContextRef.current || !audioDestinationRef.current) {
+      console.warn("⚠️ Audio context not initialized, cannot reconnect TTS");
+      return;
+    }
+
+    if (!newAudioStream) {
+      console.warn("⚠️ No audio stream provided to reconnect");
+      return;
+    }
+
+    const connectTTSAudio = () => {
+      const tracks = newAudioStream.getAudioTracks();
+      if (tracks.length > 0) {
+        try {
+          const auxSource =
+            audioContextRef.current.createMediaStreamSource(newAudioStream);
+          auxSource.connect(audioDestinationRef.current);
+          console.log(
+            "✅ TTS audio reconnected for new question:",
+            tracks.length,
+            "tracks",
+          );
+          return true;
+        } catch (err) {
+          console.error("❌ TTS reconnection failed:", err);
+          return false;
+        }
+      }
+      return false;
+    };
+
+    // Try immediate connection
+    if (!connectTTSAudio()) {
+      // Wait for tracks to be added
+      console.log("⏳ Monitoring new TTS stream for audio tracks...");
+      newAudioStream.addEventListener(
+        "addtrack",
+        () => {
+          console.log("🎵 New TTS track detected, connecting...");
+          connectTTSAudio();
+        },
+        { once: true },
+      );
+    }
+  }, []);
+
   return {
     startRecordingFlow,
     stopRecording,
+    reconnectTTSAudio,
     isRecording,
     recordedChunks,
     stream,

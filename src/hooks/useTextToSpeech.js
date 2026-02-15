@@ -63,6 +63,16 @@ export function useTextToSpeech() {
       const url = URL.createObjectURL(blob);
       audio.src = url;
 
+      // IMPORTANT: Recreate the audio stream for each new audio source
+      // This ensures that captureStream() captures the new audio, not just the first one
+      if (audio.captureStream) {
+        setAudioStream(audio.captureStream());
+        console.log("✅ Audio stream recreated for new question");
+      } else if (audio.mozCaptureStream) {
+        setAudioStream(audio.mozCaptureStream());
+        console.log("✅ Audio stream recreated for new question (Firefox)");
+      }
+
       const handleEnded = () => {
         setIsSpeaking(false);
         if (onEnd) onEnd(lastBlobRef.current); // Pass blob to callback

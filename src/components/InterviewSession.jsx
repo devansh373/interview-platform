@@ -25,6 +25,7 @@ const InterviewSession = ({ questions }) => {
     stream,
     startRecordingFlow,
     stopRecording,
+    reconnectTTSAudio,
     recordedChunks,
     isRecording,
     error: videoError,
@@ -42,6 +43,13 @@ const InterviewSession = ({ questions }) => {
       videoRef.current.srcObject = stream;
     }
   }, [stream]);
+
+  // Reconnect TTS audio stream whenever it changes (for each new question)
+  useEffect(() => {
+    if (audioStream && isRecording) {
+      reconnectTTSAudio(audioStream);
+    }
+  }, [audioStream, isRecording, reconnectTTSAudio]);
 
   const playQuestion = (text, index) => {
     setIsSpeaking(true);
